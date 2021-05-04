@@ -1,4 +1,10 @@
 {
   "TELEGRAM_BOT_TOKEN": "",
   "TELEGRAM_CHAT_ID": ""
+  
+  "CRON_EXPRESSION": "*/5 * * * *",
+
+  "HOST": "https://www.ptt.cc/",
+  "TARGET_PATH": "bbs/MacShop/search?q=airpods+pro",
+  "TITLE_SHOULD_INCLUDE": ""
 }

@@ -2,18 +2,18 @@ process.env.NTBA_FIX_319 = 1
 
 // config
 const config = require('./config.json')
-const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = config
+const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CRON_EXPRESSION, HOST, TARGET_PATH } = config
 
 // lowdb
 const low = require('lowdb')
 const FileSync = require('lowdb/adapters/FileSync')
 const adapter = new FileSync('db.json')
 const db = low(adapter)
+db.defaults({ executedAt: '', pttLinkCache: [] }).write()
 
 // cronjob
-
 const CronJob = require('cron').CronJob
-const cronExpression = `* * * * *`
+const cronExpression = `*/5 * * * *`
 
 // telegram bot
 const TelegramBot = require('node-telegram-bot-api')
@@ -29,14 +29,13 @@ bot.on('message', (msg) => {
 const request = require('request')
 const cheerio = require('cheerio')
 
-const host = 'https://www.ptt.cc/'
-const targetURL = 'https://www.ptt.cc/bbs/MacShop/search?q=airpods+pro'
-const linkListCache = [] // keep 50
-let isInitial = true
-
 const crawler = () => {
-  console.log('start crawler')
-  request.get(targetURL, function (err, res, data) {
+  const executedAt = new Date().toLocaleString('zh-TW')
+  console.log('start crawler', executedAt)
+  let pttLinkCache = db.get('pttLinkCache').value()
+  const isInitial = pttLinkCache.length === 0
+
+  request.get(`${HOST}${TARGET_PATH}`, function (err, res, data) {
     const $ = cheerio.load(data)
 
     for (let element of $('#main-container .title a')) {
@@ -44,30 +43,30 @@ const crawler = () => {
       const text = element?.children?.[0]?.data
 
       if (text.includes('販售')) {
-        if (linkListCache.includes(link)) {
-          return
+        if (pttLinkCache.includes(link)) {
+          break
         }
 
-        linkListCache.push(link) // add new one
+        pttLinkCache.push(link) // add new one
 
         if (isInitial) {
           continue
         }
 
-        bot.sendMessage(TELEGRAM_CHAT_ID, `${host}${link}`)
-        if (linkListCache.length > 49) {
-          linkListCache.shift() // remove oldest one
+        bot.sendMessage(TELEGRAM_CHAT_ID, `${HOST}${link}`)
+        if (pttLinkCache.length > 29) {
+          pttLinkCache.shift() // remove oldest one
         }
       }
-      console.log(link, text)
     }
-    isInitial = false
+
+    db.set('pttLinkCache', pttLinkCache).write()
+    db.set('executedAt', executedAt).write()
   })
 }
 
-console.log(`CronJob Before Set -> ${cronExpression}`)
-const job = new CronJob(cronExpression, function () {
+const job = new CronJob(CRON_EXPRESSION, function () {
   crawler()
 })
-console.log(`CronJob After Set -> ${cronExpression}`)
+console.log(`CronJob Start -> ${CRON_EXPRESSION}`)
 job.start()
