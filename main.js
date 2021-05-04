@@ -31,7 +31,7 @@ const cheerio = require('cheerio')
 
 const host = 'https://www.ptt.cc/'
 const targetURL = 'https://www.ptt.cc/bbs/MacShop/search?q=airpods+pro'
-const linkListCache = []
+const linkListCache = [] // keep 50
 let isInitial = true
 
 const crawler = () => {
@@ -49,12 +49,15 @@ const crawler = () => {
         }
 
         linkListCache.push(link) // add new one
-        if (!isInitial) {
-          bot.sendMessage(TELEGRAM_CHAT_ID, `${host}${link}`)
-          linkListCache.shift() // remove oldest one
+
+        if (isInitial) {
+          continue
         }
 
-        console.log(linkListCache.length)
+        bot.sendMessage(TELEGRAM_CHAT_ID, `${host}${link}`)
+        if (linkListCache.length > 49) {
+          linkListCache.shift() // remove oldest one
+        }
       }
       console.log(link, text)
     }
