@@ -43,17 +43,18 @@ const crawler = () => {
       const link = element?.attribs?.href
       const text = element?.children?.[0]?.data
 
-      // 販售
       if (text.includes('販售')) {
-        if (!linkListCache.includes(link)) {
-          linkListCache.push(link) // add new one
-          if (!isInitial) {
-            bot.sendMessage(TELEGRAM_CHAT_ID, `${host}${link}`)
-            linkListCache.shift() // remove oldest one
-          }
-
-          console.log(linkListCache.length)
+        if (linkListCache.includes(link)) {
+          return
         }
+
+        linkListCache.push(link) // add new one
+        if (!isInitial) {
+          bot.sendMessage(TELEGRAM_CHAT_ID, `${host}${link}`)
+          linkListCache.shift() // remove oldest one
+        }
+
+        console.log(linkListCache.length)
       }
       console.log(link, text)
     }
