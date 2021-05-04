@@ -2,7 +2,14 @@ process.env.NTBA_FIX_319 = 1
 
 // config
 const config = require('./config.json')
-const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CRON_EXPRESSION, HOST, TARGET_PATH } = config
+const {
+  TELEGRAM_BOT_TOKEN,
+  TELEGRAM_CHAT_ID,
+  CRON_EXPRESSION,
+  HOST,
+  TARGET_PATH,
+  TITLE_SHOULD_INCLUDE,
+} = config
 
 // lowdb
 const low = require('lowdb')
@@ -42,7 +49,7 @@ const crawler = () => {
       const link = element?.attribs?.href
       const text = element?.children?.[0]?.data
 
-      if (text.includes('販售')) {
+      if (text.includes(TITLE_SHOULD_INCLUDE)) {
         if (pttLinkCache.includes(link)) {
           break
         }
