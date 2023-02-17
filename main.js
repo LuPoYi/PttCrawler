@@ -8,8 +8,9 @@ const {
   CRON_EXPRESSION,
   HOST,
   TARGET_PATH,
-  TITLE_SHOULD_INCLUDE,
+  TITLE_SHOULD_INCLUDE_ARRAY,
 } = config
+const URL = `${HOST}${encodeURI(TARGET_PATH)}`
 
 // lowdb
 const low = require('lowdb')
@@ -42,28 +43,37 @@ const crawler = () => {
   let pttLinkCache = db.get('pttLinkCache').value()
   const isInitial = pttLinkCache.length === 0
 
-  request.get(`${HOST}${TARGET_PATH}`, function (err, res, data) {
+  // set cookies
+  const cookieJar = request.jar()
+  const cookie = request.cookie('over18=1')
+  cookieJar.setCookie(cookie, URL)
+
+  const options = {
+    url: URL,
+    jar: cookieJar,
+  }
+
+  request.get(options, (err, res, data) => {
     const $ = cheerio.load(data)
 
     for (let element of $('#main-container .title a')) {
       const link = element?.attribs?.href
       const text = element?.children?.[0]?.data
 
-      if (text.includes(TITLE_SHOULD_INCLUDE)) {
-        if (pttLinkCache.includes(link)) {
-          break
-        }
+      let isInclude = true
+      TITLE_SHOULD_INCLUDE_ARRAY.forEach((keyword) => {
+        if (!text.includes(keyword)) isInclude = false
+      })
+
+      if (isInclude) {
+        if (pttLinkCache.includes(link)) break
 
         pttLinkCache.push(link) // add new one
 
-        if (isInitial) {
-          continue
-        }
+        if (isInitial) continue
 
         bot.sendMessage(TELEGRAM_CHAT_ID, `${HOST}${link}`)
-        if (pttLinkCache.length > 29) {
-          pttLinkCache.shift() // remove oldest one
-        }
+        if (pttLinkCache.length > 29) pttLinkCache.shift() // remove oldest one
       }
     }
 
@@ -72,8 +82,6 @@ const crawler = () => {
   })
 }
 
-const job = new CronJob(CRON_EXPRESSION, function () {
-  crawler()
-})
+const job = new CronJob(CRON_EXPRESSION, () => crawler())
 console.log(`CronJob Start -> ${CRON_EXPRESSION}`)
 job.start()
